@@ -101,7 +101,7 @@ class SEEDIVDataset(Dataset):
 
         return (
             correlation_matrix
-            if not self.graph_with_loops
+            if self.graph_with_loops
             else correlation_matrix - torch.eye(correlation_matrix.shape[0])
         )
 
