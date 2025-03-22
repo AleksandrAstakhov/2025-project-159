@@ -1,24 +1,27 @@
-from torch.utils.data import Dataset
-
-import scipy.io as sio
-import torch
+import h5py
 import os
+import torch
+import scipy.io as sio
+import re
+
+from torch.utils.data import Dataset
+from torch_geometric.utils import dense_to_sparse
+from torch_geometric.data import Data
+from tqdm.auto import tqdm as tqdma
 
 
 class SEEDIVDataset(Dataset):
     def __init__(
         self,
-        data_path,
-        window_size,
-        window_stride,
-        windows_number,
+        h5_path,
+        raw_data_dir,
+        time_step_size,
+        stride,
+        max_seq_len,
         threshold,
-        *,
-        need_save=False,
+        graphs_with_loops,
         can_load=False,
-        path_to_save=None,
     ):
-        super().__init__()
 
         labels = [
             [1, 2, 3, 0, 2, 0, 0, 1, 0, 1, 2, 1, 1, 1, 2, 3, 2, 2, 3, 3, 0, 3, 0, 3],
@@ -26,65 +29,115 @@ class SEEDIVDataset(Dataset):
             [1, 2, 2, 1, 3, 3, 3, 1, 1, 2, 1, 0, 2, 3, 3, 0, 2, 3, 0, 0, 2, 0, 1, 0],
         ]
 
-        self.data_path = data_path
+        self.h5_path = h5_path
+        self.time_step_size = time_step_size
+        self.stride = stride
+        self.max_seq_len = max_seq_len
+        self.graph_with_loops = graphs_with_loops
+        self.dataset_size = 0
         self.threshold = threshold
-        self.window_size = window_size
-        self.window_stride = window_stride
-        self.windows_number = windows_number
 
-        self.eeg_samples = []
+        if can_load:
+            with h5py.File(h5_path, "r") as f:
+                self.dataset_size = f["dataset"]["dataset_size"][()]
+                return
 
-        if can_load and path_to_save is not None:
-            self.eeg_samples = torch.load(path_to_save)
+        with h5py.File(h5_path, "w") as f:
+            eeg_group = f.require_group("dataset")
 
-        for sessionn in range(1, 4):
-
+        for session in tqdma(range(1, 4), desc="Processing sessions"):
             data_files = []
 
-            folder_path = os.path.join(self.data_path, str(sessionn))
-            for file in os.listdir(folder_path):
-                if file.endswith(".mat"):
-                    data_files.append(os.path.join(self.data_path, file))
+            session_data = os.path.join(raw_data_dir, str(session))
 
-            for mat_file in data_files:
-                mat_dict = sio.loadmat(mat_file)
+            for f in os.listdir(session_data):
+                if f.endswith(".mat"):
+                    data_files.append(os.path.join(session_data, f))
 
-                for trial in range(1, 25):
-                    eeg_signal = torch.tensor(mat_dict[f"cz_eeg{trial}"])
+            for file in tqdma(data_files, desc="Processing files"):
+                eeg_raw_data = sio.loadmat(file)
+
+                for trial in tqdma(range(1, 25), desc="Processing trials", leave=False):
+                    base = re.sub(r"\d", "", list(eeg_raw_data.keys())[3])
+
+                    eeg_signal = torch.tensor(eeg_raw_data[f"{base}{trial}"])
 
                     eeg_windows = eeg_signal.unfold(
-                        dimension=1, size=3, step=3
+                        dimension=1, size=time_step_size, step=stride
                     ).permute(1, 0, 2)
 
-                    for i in range(len(eeg_windows) // self.windows_number):
-                        start_idx = i * self.windows_number
-                        end_idx = (i + 1) * self.window_size
-                        sample = eeg_windows[start_idx:end_idx]
+                    begin_seq = 0
+                    end_seq = max_seq_len
 
-                        adj_mat_sample = torch.tensor(
-                            [
-                                self._build_adjacency_matrix(window, self.threshold)
-                                for window in sample
-                            ]
+                    while end_seq <= len(eeg_windows):
+                        self._process_windows_seq(
+                            eeg_windows[begin_seq:end_seq],
+                            labels[session - 1][trial - 1],
                         )
 
-                        self.eeg_samples.append(
-                            (sample, adj_mat_sample, labels[sessionn][trial])
-                        )
+                        begin_seq += max_seq_len
+                        end_seq += max_seq_len
 
-        self.eeg_samples = torch.tensor(self.eeg_samples)
+        with h5py.File(h5_path, "a") as f:
+            f["dataset"].create_dataset("dataset_size", data=self.dataset_size)
 
-        if need_save and path_to_save is not None:
-            torch.save(self.eeg_samples, path_to_save)
+    def _get_adj_mat(self, window):
+        signals_centered = window - window.mean(dim=1, keepdim=True)
 
-    def _build_adjacency_matrix(window_data, threshold=0.7):
-        # window_data: (62, window_size)
-        correlations = torch.corrcoef(window_data)  # (62, 62)
-        adjacency = (correlations > threshold).float()
-        return adjacency
+        cov_matrix = torch.matmul(signals_centered, signals_centered.T) / (
+            self.time_step_size - 1
+        )
+
+        std_devs = torch.std(window, dim=1, keepdim=True)
+
+        epsilon = 1e-8
+        correlation_matrix = cov_matrix / ((std_devs * std_devs.T) + epsilon)
+
+        correlation_matrix = torch.where(
+            torch.abs(correlation_matrix) < self.threshold,
+            torch.tensor(0.0, device=correlation_matrix.device),
+            correlation_matrix,
+        )
+
+        return (
+            correlation_matrix
+            if not self.graph_with_loops
+            else correlation_matrix - torch.eye(correlation_matrix.shape[0])
+        )
+
+    def _process_windows_seq(self, windows_seq, label):
+        with h5py.File(self.h5_path, "a") as f:
+            dataset = f["dataset"]
+
+            sample = dataset.require_group(str(self.dataset_size))
+            sample.create_dataset("label", data=label)
+
+            self.dataset_size += 1
+
+            for idx, window in enumerate(windows_seq):
+                adj_mat = self._get_adj_mat(window)
+
+                edge_idx, edge_attr = dense_to_sparse(adj_mat)
+
+                sample.create_dataset(f"x{idx}", data=window.numpy())
+                sample.create_dataset(f"edge_idx{idx}", data=edge_idx.numpy())
+                sample.create_dataset(f"edge_attr{idx}", data=edge_attr.numpy())
 
     def __len__(self):
-        return len(self.eeg_samples)
+        return self.dataset_size
 
     def __getitem__(self, idx):
-        self.eeg_samples[idx]
+        with h5py.File(self.h5_path, "r") as f:
+            sample = f["dataset"][f"{idx}"]
+
+            return [
+                (
+                    Data(
+                        x=torch.tensor(sample[f"x{id}"]),
+                        edge_index=torch.tensor(sample[f"edge_idx{id}"]),
+                        edge_attr=torch.tensor(sample[f"edge_attr{id}"]),
+                    ),
+                    torch.tensor(sample["label"]),
+                )
+                for id in range(self.max_seq_len)
+            ]
