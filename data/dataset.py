@@ -22,9 +22,6 @@ from torch_geometric.utils import to_dense_adj
 from tqdm.auto import tqdm as tqdma
 
 
-
-
-
 class SEEDIVDataset(Dataset):
     def __init__(
         self,
