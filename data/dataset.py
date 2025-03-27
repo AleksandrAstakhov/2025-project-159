@@ -4,10 +4,25 @@ import torch
 import scipy.io as sio
 import re
 
+import numpy as np
+
+import torch.nn as nn
+import torch.optim as optim
+
+from classifier import EmoClassifier
+
 from torch.utils.data import Dataset
+
 from torch_geometric.utils import dense_to_sparse
 from torch_geometric.data import Data
+from torch_geometric.loader import DataLoader
+
+from torch_geometric.utils import to_dense_adj
+
 from tqdm.auto import tqdm as tqdma
+
+
+
 
 
 class SEEDIVDataset(Dataset):
@@ -133,11 +148,11 @@ class SEEDIVDataset(Dataset):
             return [
                 (
                     Data(
-                        x=torch.tensor(sample[f"x{id}"]),
-                        edge_index=torch.tensor(sample[f"edge_idx{id}"]),
-                        edge_attr=torch.tensor(sample[f"edge_attr{id}"]),
+                        x=torch.tensor(np.array(sample[f"x{id}"])),
+                        edge_index=torch.tensor(np.array(sample[f"edge_idx{id}"])),
+                        edge_attr=torch.tensor(np.array(sample[f"edge_attr{id}"])),
                     ),
-                    torch.tensor(sample["label"]),
+                    torch.tensor(sample["label"][()]),
                 )
                 for id in range(self.max_seq_len)
             ]
