@@ -33,10 +33,8 @@ def get_adj_matrices(windows, threshold=0.7):
     )
     adj = torch.einsum("ink,imk->inm", balanced, balanced) / (windows.shape[2] - 1)
 
-    # Убираем единички на диагонали
     adj = adj - torch.diag_embed(torch.diagonal(adj, dim1=1, dim2=2))
 
-    # Применяем пороговую обработку
     adj = torch.where(adj > threshold, adj, torch.zeros_like(adj))
 
     return adj
