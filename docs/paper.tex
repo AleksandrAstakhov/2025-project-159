@@ -83,6 +83,106 @@
 \end{itemize}
 
 
+\section{Теоретическая часть}
+
+В данном разделе представлено решение задачи классификации многомерных временных рядов ЭЭГ с использованием графовых диффузионных моделей. Предлагаемый метод сочетает пространственное моделирование функциональных связей мозга с анализом временной динамики сигналов.
+
+\subsection{Предлагаемое решение}
+
+Решение задачи включает следующие этапы:
+
+\begin{enumerate}
+    \item Построение графа функциональных связей между электродами
+    \item Применение диффузионных сверток для пространственного моделирования
+    \item Использование рекуррентных слоев для анализа временных зависимостей
+    \item Обучение модели с учителем для классификации паттернов ЭЭГ
+\end{enumerate}
+
+\subsection{Математическая модель}
+
+Графовая структура мозга представляется как $\mathcal{G} = (\mathcal{V}, \mathcal{E}, \mathbf{A})$, где:
+\begin{itemize}
+    \item $\mathcal{V}$ — множество вершин (электродов), $|\mathcal{V}| = E$
+    \item $\mathcal{E}$ — множество ребер (функциональных связей)
+    \item $\mathbf{A} \in \mathbb{R}^{E \times E}$ — взвешенная матрица смежности
+\end{itemize}
+
+Матрица смежности строится на основе корреляции сигналов между электродами:
+\begin{equation}
+A_{ij} = \rho(x_i, x_j),
+\end{equation}
+где $\rho(x_i, x_j)$ — коэффициент корреляции Пирсона между сигналами электродов $i$ и $j$.
+
+Для улучшения устойчивости модели можно применить пороговую обработку:
+\begin{equation}
+A_{ij} = \begin{cases}
+\rho(x_i, x_j), & \text{если } \rho(x_i, x_j) > \tau \\
+0, & \text{иначе}
+\end{cases}
+\end{equation}
+где $\tau$ — пороговое значение корреляции.
+
+
+\subsection{Диффузионная свертка}
+
+Для пространственного моделирования используется диффузионная свертка:
+\[
+\mathbf{H}^{(l+1)} = \sum_{k=0}^{K} \mathbf{P}^k \mathbf{H}^{(l)} \mathbf{W}_k,
+\]
+где:
+\begin{itemize}
+    \item $\mathbf{P} = \mathbf{D}^{-1}\mathbf{A}$ — нормированная матрица смежности
+    \item $\mathbf{H}^{(l)}$ — скрытые представления на слое $l$
+    \item $\mathbf{W}_k$ — обучаемые параметры
+    \item $K$ — количество шагов диффузии
+\end{itemize}
+
+\subsection{Временное моделирование}
+
+Для анализа временных зависимостей применяется GRU-слой:
+\[
+\mathbf{z}_t = \sigma(\mathbf{W}_z[\mathbf{h}_{t-1}, \mathbf{x}_t]),
+\]
+\[
+\mathbf{r}_t = \sigma(\mathbf{W}_r[\mathbf{h}_{t-1}, \mathbf{x}_t]),
+\]
+\[
+\tilde{\mathbf{h}}_t = \tanh(\mathbf{W}[\mathbf{r}_t \odot \mathbf{h}_{t-1}, \mathbf{x}_t]),
+\]
+\[
+\mathbf{h}_t = (1-\mathbf{z}_t) \odot \mathbf{h}_{t-1} + \mathbf{z}_t \odot \tilde{\mathbf{h}}_t,
+\]
+где $\mathbf{z}_t$, $\mathbf{r}_t$ — gates, $\mathbf{h}_t$ — скрытое состояние.
+
+\subsection{Алгоритм обучения}
+
+\begin{algorithm}[H]
+\caption{Обучение DCRNN модели}
+\begin{algorithmic}[1]
+\REQUIRE Множество данных $D = (\mathbf{X}, \mathbf{Z}, \mathbf{y})$, параметры модели
+\ENSURE Обученная модель $h_\theta$
+\STATE Инициализировать параметры $\theta$ случайным образом
+\STATE Построить матрицы смежности $\mathbf{A}_{\mathbf{X}, \mathbf{Z}}$ для всех примеров
+\FOR{эпоха = 1 до MaxEpochs}
+    \FOR{пакет $(\mathbf{X}_m, y_m)$ в D}
+        \STATE Вычислить предсказание: $\hat{y}_m = h_\theta(\mathbf{X}_m, \mathbf{A}_{\mathbf{X}, \mathbf{Z}}(m))$
+        \STATE Вычислить потерю: $\mathcal{L} = -\log p_m^{y_m}$
+        \STATE Обновить параметры: $\theta \leftarrow \theta - \alpha \nabla_\theta \mathcal{L}$
+    \ENDFOR
+\ENDFOR
+\RETURN $\theta^*$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Свойства решения}
+
+Предлагаемое решение обладает следующими свойствами:
+\begin{itemize}
+    \item Учитывает неевклидову природу расположения электродов
+    \item Моделирует как пространственные, так и временные зависимости
+    \item Позволяет интерпретировать функциональные связи через матрицу смежности
+    \item Устойчиво к шумам благодаря диффузионному процессу
+\end{itemize}
 
 \bibliographystyle{plain}
 \bibliography{Biblio}
