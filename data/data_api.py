@@ -346,7 +346,7 @@ class DataAPI:
         new_size = current_size + self._buffered_groups
 
         self.root[self.LABELS].resize(new_size)
-        self.root[self.LABELS][current_size:new_size] = self._label_buffer
+        self.root[self.LABELS][current_size:new_size] = self._label_buffer[:]
 
     def get_sample(
         self, group_id: int
@@ -415,7 +415,9 @@ class DataAPI:
             )
 
             edge_index = torch.tensor(
-                np.array([sparse_row[data_slice], sparse_col[data_slice]], dtype=np.int64)
+                np.array(
+                    [sparse_row[data_slice], sparse_col[data_slice]], dtype=np.int64
+                )
             )
 
             edge_attr = torch.tensor(sparse_data[data_slice], dtype=torch.float32)
@@ -424,7 +426,7 @@ class DataAPI:
 
             matrices.append(graph)
 
-        return matrices, label
+        return matrices, torch.tensor(label)
 
     @contextmanager
     def batch_writer(self):
