@@ -39,7 +39,6 @@ class AsyncBatchLoader:
         return processes
 
     def __len__(self):
-        print(len(self.batch_queue))
         return len(self.dataloader)
 
     def get_batch(self):
