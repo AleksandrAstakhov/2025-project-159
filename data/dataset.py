@@ -4,7 +4,7 @@ import torch
 import numpy as np
 from torch_geometric.data import Batch
 
-import torch.multiprocessing as mp # юзаем процессы чтобы не зависать на GIL
+import torch.multiprocessing as mp  # юзаем процессы чтобы не зависать на GIL
 
 
 class SEEDIVDataset(Dataset):
