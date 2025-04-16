@@ -346,9 +346,7 @@ class DataAPI:
         new_size = current_size + self._buffered_groups
 
         self.root[self.LABELS].resize(new_size)
-        self.root[self.LABELS][current_size:new_size] = self._label_buffer[
-            : self._buffered_groups
-        ]
+        self.root[self.LABELS][current_size:new_size] = self._label_buffer[:self._buffered_groups]
 
     def get_sample(
         self, group_id: int
