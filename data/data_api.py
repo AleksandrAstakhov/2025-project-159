@@ -277,21 +277,29 @@ class DataAPI:
             return
 
         try:
-            with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-                # Параллельная запись разных частей данных
-                futures = []
+            # with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            #     # Параллельная запись разных частей данных
+            #     futures = []
 
-                if self._sparse_buffer["pos"] > 0:
-                    futures.append(executor.submit(self._write_sparse_data))
+            #     if self._sparse_buffer["pos"] > 0:
+            #         futures.append(executor.submit(self._write_sparse_data))
 
-                if self._dense_buffer["pos"] > 0:
-                    futures.append(executor.submit(self._write_dense_data))
+            #     if self._dense_buffer["pos"] > 0:
+            #         futures.append(executor.submit(self._write_dense_data))
 
-                futures.append(executor.submit(self._write_labels))
+            #     futures.append(executor.submit(self._write_labels))
 
-                # Ожидание завершения всех операций
-                for future in as_completed(futures):
-                    future.result()
+            #     # Ожидание завершения всех операций
+            #     for future in as_completed(futures):
+            #         future.result()
+            
+            if self._sparse_buffer["pos"] > 0:
+                self._write_sparse_data()
+                
+            if self._dense_buffer["pos"] > 0:
+                self._write_dense_data()
+                
+            self._write_labels()
 
         except Exception as e:
             self._reset_buffers()
