@@ -1,3 +1,10 @@
-# 2025-project-159
+# Restoring Functional Brain Groups Using Graph Diffusion Models
 
-В данной работе рассматривается задача классификации многомерного временного ряда, представляющего собой электроэнцефалограмму головного мозга человека. Стандартные подходы, использующие двухмерные свертки, не могут учесть пространственную структуру сигнала, поскольку датчики, считывающие показатели, находятся на сферической поверхности. В качестве решения предлагается использовать графовое представление функциональных групп, а для моделирования использовать нейронную диффузию.
+
+### Authors: A. M. Astakhov, S. K. Panchenko, V. V. Strijov
+
+This paper addresses the problem of classifying a multivariate time series representing a human
+brain electroencephalogram (EEG). Standard approaches using two-dimensional convolutions
+fail to account for the spatial structure of the signal, since the sensors collecting the data are
+located on a spherical surface. As a solution, we propose using a graph-based representation of
+functional brain groups and modeling with neural diffusion.
