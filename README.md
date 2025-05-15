@@ -7,8 +7,6 @@
 | Scientific Supervisor:         | V. V. Strijov                                                     |
 | Scientific Consultant (if any):| S. K. Panchenko                                                   |
 
-### Authors: A. M. Astakhov, S. K. Panchenko, V. V. Strijov
-
 ### Abstract
 
 This paper addresses the problem of classifying a multivariate time series representing a human
