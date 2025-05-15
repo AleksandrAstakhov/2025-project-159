@@ -1,5 +1,10 @@
 # Restoring Functional Brain Groups Using Graph Diffusion Models
 
+|-------------------------------|--------------------------------------------------------------------|
+| Type of Research Work:         | M1P                                                                |
+| Author:                        | A. M. Astakhov                                                    |
+| Scientific Supervisor:         | V. V. Strijov                                                     |
+| Scientific Consultant (if any):| S. K. Panchenko                                                   |
 
 ### Authors: A. M. Astakhov, S. K. Panchenko, V. V. Strijov
 
