@@ -1,5 +1,6 @@
 # Restoring Functional Brain Groups Using Graph Diffusion Models
 
+| Research Topic:               | Restoring Functional Brain Groups Using Graph Diffusion Models |
 |-------------------------------|--------------------------------------------------------------------|
 | Type of Research Work:         | M1P                                                                |
 | Author:                        | A. M. Astakhov                                                    |
